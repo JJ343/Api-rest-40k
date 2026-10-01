@@ -117,6 +117,3 @@ Copy it to `.env` for local runs — never commit real secrets.
 `.\mvnw.cmd test` — the context test needs Postgres running (`docker compose up -d db`).
 No CI/Workflows here on purpose: this repo is a structure demo.
 
-## License
-
-MIT — see `LICENSE`.
