@@ -12,13 +12,18 @@
 	<artifactId>primarchs-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>primarchs-api</name>
-	<description>API Primarcas WH40k</description>
-	<url/>
+	<description>Sample REST API (Warhammer 40k Primarchs) showing how I structure a Spring Boot API</description>
+	<url>https://github.com/example/primarchs-api</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<name>Primarchs API demo</name>
+		</developer>
 	</developers>
 	<scm>
 		<connection/>
@@ -49,6 +54,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springdoc</groupId>

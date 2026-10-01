@@ -1,0 +1,12 @@
+target
+.git
+.gitignore
+.env
+*.log
+hs_err_*.log
+session-*.md
+.vscode
+.idea
+*.iml
+tools
+src/test

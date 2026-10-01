@@ -1,9 +1,19 @@
 # Primarchs API — Warhammer 40k
 
-API REST en **Java 21 + Spring Boot 4.1 + Maven**, con **PostgreSQL + Flyway**, **JWT (Spring Security)**,
-**OpenAPI/Swagger** y **Docker Compose**. Dominio: **Primarcas y sus Capítulos**.
+Sample REST API in **Java 21 + Spring Boot 4.1 + Maven**, with **PostgreSQL + Flyway**,
+**JWT (Spring Security)**, **OpenAPI/Swagger** and **Docker Compose**.
+Domain: **Primarchs and their Chapters**.
 
-## Estructura (buenas prácticas)
+This is a demo project showing how I structure a Spring Boot REST API:
+layered code, validation, migrations, auth, docs and Docker.
+
+## Stack
+
+- Java 21, Spring Boot 4.1 (WebMVC, Data JPA, Validation, Security, Actuator)
+- PostgreSQL 16 + Flyway (`ddl-auto: validate`, migrations are the only schema source)
+- JWT (jjwt), springdoc-openapi, Docker Compose
+
+## Layout
 
 ```
 src/main/java/com/warhammer/primarchs/
@@ -14,69 +24,99 @@ src/main/java/com/warhammer/primarchs/
 ├── security/      # JwtService, JwtAuthenticationFilter, CustomUserDetailsService
 ├── auth/          # AuthController, AuthService, dto/
 ├── primarch/      # entity, enums, repository, dto/, mapper, service, controller
-└── chapter/       # idem (N capítulos → 1 primarca)
+└── chapter/       # same (N chapters -> 1 primarch)
 src/main/resources/
 ├── application.yml
-└── db/migration/  # V1 esquema, V2 seed (8 primarcas + 8 capítulos)
+├── db/migration/  # V1 schema, V2 seed (8 primarchs + 8 chapters)
+└── db/seed/       # manual seed, NOT run by Flyway (10 remaining primarchs)
+tools/seed/        # SeedPrimarchs.java: manual upload via the API
 ```
 
-Patrones aplicados: capas Controller → Service → Repository, DTOs (`record`) + validación Bean Validation,
-mappers explícitos, excepciones de dominio + `@RestControllerAdvice`, paginación, Flyway como única fuente
-del esquema (`ddl-auto: validate`), JWT stateless, OpenAPI documentado.
+Patterns: Controller → Service → Repository layers, `record` DTOs + Bean Validation,
+explicit mappers, domain exceptions + `@RestControllerAdvice`, pagination,
+stateless JWT, documented OpenAPI.
 
-## Requisitos
+## Requirements
 
-- JDK 21+ (el proyecto fija `java.version=21`)
-- Docker + Docker Compose (para Postgres), o un Postgres local
-- Maven Wrapper incluido (`mvnw.cmd`) — no necesitas instalar Maven
+- JDK 21+ (`java.version=21`)
+- Docker + Docker Compose (for Postgres and full-stack run)
+- Included Maven Wrapper (`mvnw.cmd`) — no Maven install needed
 
-## Arranque rápido
+## Quickstart (recommended)
 
 ```powershell
-# 1. Base de datos
-docker compose up -d db
-
-# 2. Compilar y arrancar (usa .env o variables; hay valores por defecto para dev)
-.\mvnw.cmd spring-boot:run
+# Full stack, builds the jar inside Docker (no local build needed)
+docker compose up --build
 ```
 
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Health: http://localhost:8080/actuator/health
 
-Con Docker todo junto: `docker compose up --build`
+Local run (without Docker image):
 
-## Autenticación
+```powershell
+# 1. Database only
+docker compose up -d db
 
-- `POST /api/v1/auth/register` `{username, email, password}` → `{token, username, role}`
-- `POST /api/v1/auth/login` `{username, password}` → `{token, ...}`
-- Usa el token como `Authorization: Bearer <token>`.
-- `GET /api/v1/**` es público. `POST/PUT/DELETE` requieren JWT.
+# 2. Build + run (uses .env or defaults for dev)
+.\mvnw.cmd spring-boot:run
+```
+
+## Auth
+
+- `POST /api/v1/auth/register` `{"username","email","password"}` → `{"token","username","role"}`
+- `POST /api/v1/auth/login` `{"username","password"}` → `{"token",...}`
+- Send the token as `Authorization: Bearer <token>`.
+- `GET /api/v1/**` is public. `POST/PUT/DELETE` require JWT.
+
+```powershell
+$reg = Invoke-RestMethod -Uri http://localhost:8080/api/v1/auth/register -Method Post -ContentType "application/json" -Body '{"username":"demo","email":"demo@test.com","password":"demo1234"}'
+$env:JWT_TOKEN = $reg.token
+
+Invoke-RestMethod -Uri http://localhost:8080/api/v1/primarchs -Method Post -ContentType "application/json" -Headers @{Authorization="Bearer $env:JWT_TOKEN"} -Body '{"name":"Fulgrim","legionNumber":3,"allegiance":"TRAITOR","status":"DAEMON_PRINCE","homeworld":"Chemos","description":"Demo create"}'
+```
 
 ## Endpoints
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| GET | `/api/v1/primarchs?allegiance=LOYALIST&page=0&size=20&sort=legionNumber` | Listar primarcas |
-| GET | `/api/v1/primarchs/{id}` | Detalle primarca |
-| POST | `/api/v1/primarchs` | Crear (auth) |
-| PUT | `/api/v1/primarchs/{id}` | Actualizar parcial (auth) |
-| DELETE | `/api/v1/primarchs/{id}` | Eliminar (auth) |
-| GET | `/api/v1/chapters?primarchId={uuid}` | Listar capítulos |
-| GET | `/api/v1/chapters/{id}` | Detalle capítulo |
-| POST/PUT/DELETE | `/api/v1/chapters...` | Escritura (auth) |
+| GET | `/api/v1/primarchs?allegiance=LOYALIST&page=0&size=20&sort=legionNumber` | List primarchs |
+| GET | `/api/v1/primarchs/{id}` | Primarch detail |
+| POST | `/api/v1/primarchs` | Create (auth) |
+| PUT | `/api/v1/primarchs/{id}` | Partial update (auth) |
+| DELETE | `/api/v1/primarchs/{id}` | Delete (auth) |
+| GET | `/api/v1/chapters?primarchId={uuid}` | List chapters |
+| GET | `/api/v1/chapters/{id}` | Chapter detail |
+| POST/PUT/DELETE | `/api/v1/chapters...` | Write (auth) |
 
-Errores en formato `ProblemDetail` (RFC 7807): 400 validación, 401 credenciales, 404 no encontrado,
-409 duplicados (nombre / nº legión), 500 genérico.
+Errors use `ProblemDetail` (RFC 7807): 400 validation, 401 bad credentials,
+404 not found, 409 duplicates (name / legion number), 500 generic.
 
-## Variables de entorno
+## Data / seeds
 
-Ver `.env.example`. Claves: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET` (Base64 ≥ 256 bits),
-`JWT_EXPIRATION_MILLIS`, `PORT`.
+- `db/migration/V2__seed_primarchs_chapters.sql` runs automatically via Flyway: 8 primarchs + 8 chapters.
+- `db/seed/insert_another_primarchs.sql` is **manual** (outside Flyway locations): 10 remaining primarchs + chapters.
+- `tools/seed/SeedPrimarchs.java` parses that SQL file and uploads via `POST /api/v1/primarchs` to simulate a client. See `tools/seed/README.md`.
 
-> Genera un secreto propio para producción y no uses el de desarrollo.
+```powershell
+$env:API_BASE_URL = "http://localhost:8080"
+java tools/seed/SeedPrimarchs.java
+```
+
+## Env vars
+
+See `.env.example`. Keys: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`,
+`JWT_SECRET` (Base64, >= 256 bits), `JWT_EXPIRATION_MILLIS`, `PORT`.
+Copy it to `.env` for local runs — never commit real secrets.
+
+> Generate your own secret for production, do not use the dev one.
 
 ## Tests
 
-`.\mvnw.cmd test` — el test de contexto necesita Postgres en marcha (o `docker compose up -d db`).
-Para CI sin BD se recomienda añadir Testcontainers (pendiente).
+`.\mvnw.cmd test` — the context test needs Postgres running (`docker compose up -d db`).
+No CI/Workflows here on purpose: this repo is a structure demo.
+
+## License
+
+MIT — see `LICENSE`.

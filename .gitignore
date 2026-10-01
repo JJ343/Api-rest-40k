@@ -4,6 +4,14 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Local env / secrets - never commit real values (.env.example is the template)
+.env
+
+# Logs / JVM crash dumps / local session notes
+*.log
+hs_err_*.log
+session-*.md
+
 ### STS ###
 .apt_generated
 .classpath
